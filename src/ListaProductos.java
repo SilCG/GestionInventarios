@@ -72,6 +72,17 @@ public class ListaProductos {
         return null;
     }
 
+    public boolean contiene(String nombre) {
+        NodoProducto temp = primero;
+        while (temp != null) {
+            if (temp.getProducto().getNombre().equals(nombre)) {
+                return true;
+            }
+            temp = temp.getSiguiente();
+        }
+        return false;
+    }
+    
     // 4. Eliminar
     public Producto eliminar(String nombre){
         if (estaVacia()){

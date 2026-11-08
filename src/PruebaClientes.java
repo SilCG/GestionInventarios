@@ -16,7 +16,7 @@ public class PruebaClientes {
         System.out.println("Sigue: " + cola.verFrente().getNombre());       // esperado: Fernando
         cola.mostrarCola();
 
-        // Esperado: Beto, Dani, Carla, Fito, Ana, Eva
+        // Esperado: Fernando, Marcelo, Enrique, Alma, Raquel, Cindy
         System.out.println("Orden de atención:");
         while (!cola.estaVacia()) {
             Cliente atendido = cola.remover();

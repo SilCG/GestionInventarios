@@ -71,6 +71,29 @@ public class ArbolProductos {
         return disponibles;
     }
 
+    // Suma (delta positivo) o resta (delta negativo) unidades al stock de un producto del inventario.
+    // Devuelve false si el producto no existe o si el stock resultante sería negativo o desbordaría el entero.
+    public boolean ajustarCantidad(String nombre, int delta) {
+        if (nombre == null) {
+            return false;
+        }
+
+        NodoProducto actual = raiz;
+        while (actual != null) {
+            int comparacion = nombre.compareTo(actual.producto.getNombre());
+            if (comparacion == 0) {
+                long nuevaCantidad = (long) actual.producto.getCantidad() + delta;
+                if (nuevaCantidad < 0 || nuevaCantidad > Integer.MAX_VALUE) {
+                    return false;
+                }
+                actual.producto.setCantidad((int) nuevaCantidad);
+                return true;
+            }
+            actual = comparacion < 0 ? actual.izquierdo : actual.derecho;
+        }
+        return false;
+    }
+
     private void agregarDisponibles(NodoProducto nodo, List<Producto> disponibles) {
         if (nodo == null) {
             return;

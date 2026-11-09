@@ -6,20 +6,22 @@ import java.util.Scanner;
 
 public class Main {
 
-    private final ListaProductos productos;
+    private final Tienda tienda;
     private final Scanner entrada;
 
     public Main(Scanner entrada) {
         this.entrada = Objects.requireNonNull(entrada, "Se requiere una entrada de datos");
-        this.productos = new ListaProductos();
+        this.tienda = new Tienda("Tienda en línea");
     }
 
+    // Rutina principal: crea la entrada de datos y lanza el menú
     public static void main(String[] args) {
         try (Scanner entrada = new Scanner(System.in, "UTF-8")) {
             new Main(entrada).menu();
         }
     }
 
+    // Menú de consola que controla todo el flujo del programa
     public void menu() {
         try {
             int opcion;
@@ -28,32 +30,26 @@ public class Main {
                 opcion = leerOpcion();
                 switch (opcion) {
                     case 1:
-                        agregarProducto(true);
+                        agregarProducto();
                         break;
                     case 2:
-                        agregarProducto(false);
+                        ingresarCliente();
                         break;
                     case 3:
-                        buscarProducto();
+                        atenderSiguiente();
                         break;
                     case 4:
-                        modificarProducto();
+                        System.out.println("\n--- Inventario disponible ---");
+                        tienda.mostrarInventario();
                         break;
                     case 5:
-                        eliminarProducto();
-                        break;
-                    case 6:
-                        agregarImagen();
-                        break;
-                    case 7:
-                        System.out.println("\n--- Reporte de costos ---");
-                        productos.reportarCostos();
+                        tienda.mostrarCola();
                         break;
                     case 0:
                         System.out.println("Gracias por utilizar el sistema. Hasta luego.");
                         break;
                     default:
-                        System.out.println("Opción inválida. Seleccione un número entre 0 y 7.");
+                        System.out.println("Opción inválida. Seleccione un número entre 0 y 5.");
                 }
             } while (opcion != 0);
         } catch (NoSuchElementException e) {
@@ -63,14 +59,12 @@ public class Main {
     }
 
     private void mostrarMenu() {
-        System.out.println("\n===== GESTIÓN DE INVENTARIOS =====");
-        System.out.println("1. Agregar producto al inicio");
-        System.out.println("2. Agregar producto al final");
-        System.out.println("3. Buscar producto");
-        System.out.println("4. Modificar producto");
-        System.out.println("5. Eliminar producto");
-        System.out.println("6. Agregar imagen a un producto");
-        System.out.println("7. Generar reporte de costos");
+        System.out.println("\n===== " + tienda.getNombre().toUpperCase() + " =====");
+        System.out.println("1. Agregar producto al inventario");
+        System.out.println("2. Ingresar cliente a la cola");
+        System.out.println("3. Atender al siguiente cliente");
+        System.out.println("4. Ver inventario disponible");
+        System.out.println("5. Ver cola de clientes");
         System.out.println("0. Salir");
     }
 
@@ -84,181 +78,167 @@ public class Main {
         }
     }
 
-    private void agregarProducto(boolean alInicio) {
-        System.out.println("\n--- Agregar producto ---");
-        String nombre = leerNombre(null);
-        double precio = leerPrecio(null);
-        String categoria = leerTexto("Categoría: ", null);
-        LocalDate vencimiento = leerFecha(null, false);
-        int cantidad = leerCantidad(null);
-        if (!costoValido(precio, cantidad)) {
-            return;
-        }
+    // Opción 1: inserta un producto en el inventario (o suma stock si ya existe)
+    private void agregarProducto() {
+        System.out.println("\n--- Agregar producto al inventario ---");
+        String nombre = leerTexto("Nombre: ");
 
-        if (alInicio) {
-            productos.insertarInicio(nombre, precio, categoria, vencimiento, cantidad);
-        } else {
-            productos.insertarFin(nombre, precio, categoria, vencimiento, cantidad);
-        }
-        System.out.println("Producto registrado correctamente.");
-    }
-
-    private void buscarProducto() {
-        Producto producto = solicitarProducto();
-        if (producto != null) {
-            mostrarProducto(producto);
-        }
-    }
-
-    private Producto solicitarProducto() {
-        String nombre = leerTexto("Nombre del producto (tal como fue registrado): ", null);
-        return productos.buscar(nombre);
-    }
-
-    private void mostrarProducto(Producto producto) {
-        System.out.println(producto);
-        if (!producto.getListaImagenes().isEmpty()) {
-            System.out.println("Rutas de imágenes:");
-            for (String ruta : producto.getListaImagenes()) {
-                System.out.println("- " + ruta);
+        if (tienda.existeProducto(nombre)) {
+            System.out.println("Ya existe un producto con ese nombre en el inventario.");
+            if (confirmar("¿Desea sumar unidades a su stock? (s/n): ")) {
+                int unidades = leerCantidad("Unidades a sumar: ");
+                if (tienda.reabastecer(nombre, unidades)) {
+                    System.out.println("Stock actualizado correctamente.");
+                } else {
+                    System.out.println("No se pudo actualizar el stock: supera el máximo permitido.");
+                }
             }
-        }
-    }
-
-    private void modificarProducto() {
-        System.out.println("\n--- Modificar producto ---");
-        Producto producto = solicitarProducto();
-        if (producto == null) {
             return;
         }
-        mostrarProducto(producto);
-        System.out.println("Presione Enter para conservar el valor actual.");
 
-        // Primero se leen todos los campos para evitar una modificación a medias.
-        String nombreAnterior = producto.getNombre();
-        String nuevoNombre = leerNombre(nombreAnterior);
-        double precio = leerPrecio(producto.getPrecio());
-        String categoria = leerTexto("Categoría [" + producto.getCategoria() + "]: ",
-                producto.getCategoria());
-        LocalDate vencimiento = leerFecha(producto.getFechaVencimiento(), true);
-        int cantidad = leerCantidad(producto.getCantidad());
+        double precio = leerPrecio();
+        String categoria = leerTexto("Categoría: ");
+        LocalDate vencimiento = leerFecha();
+        int cantidad = leerCantidad("Cantidad inicial: ");
         if (!costoValido(precio, cantidad)) {
             return;
         }
 
-        productos.modificar(nombreAnterior, precio, categoria, vencimiento, cantidad);
-        producto.setNombre(nuevoNombre);
-        System.out.println("Producto modificado correctamente.");
-    }
-
-    private void eliminarProducto() {
-        System.out.println("\n--- Eliminar producto ---");
-        Producto producto = solicitarProducto();
-        if (producto == null) {
-            return;
-        }
-        if (confirmar("¿Desea eliminar '" + producto.getNombre() + "'? (s/n): ")) {
-            productos.eliminar(producto.getNombre());
-            System.out.println("Producto eliminado correctamente.");
+        if (tienda.agregarProducto(new Producto(nombre, precio, categoria, vencimiento, cantidad))) {
+            System.out.println("Producto agregado al inventario correctamente.");
         } else {
-            System.out.println("Eliminación cancelada.");
+            System.out.println("No se pudo agregar el producto.");
         }
     }
 
-    private void agregarImagen() {
-        System.out.println("\n--- Agregar imagen ---");
-        Producto producto = solicitarProducto();
-        if (producto == null) {
+    // Opción 2: crea un cliente, llena su carrito desde el inventario y lo inserta en la cola
+    private void ingresarCliente() {
+        System.out.println("\n--- Ingresar cliente a la cola ---");
+        if (!tienda.hayProductosDisponibles()) {
+            System.out.println("No hay productos disponibles. Agregue productos al inventario primero.");
             return;
         }
-        String ruta = leerTexto("Ruta de la imagen (ej. imagenes/arroz.jpg): ", null);
-        if (producto.getListaImagenes().contains(ruta)) {
-            System.out.println("Esa ruta ya está registrada para este producto.");
+
+        String nombre = leerTexto("Nombre del cliente: ");
+        int prioridad = leerPrioridad();
+        Cliente cliente = new Cliente(nombre, prioridad);
+
+        if (!llenarCarrito(cliente)) {
+            System.out.println("Ingreso de cliente cancelado.");
             return;
         }
-        productos.agregarImagenAProducto(producto.getNombre(), ruta);
-        System.out.println("Ruta de imagen registrada correctamente.");
+        tienda.encolarCliente(cliente);
+        System.out.println("Cliente ingresado a la cola correctamente.");
     }
 
-    private String leerNombre(String actual) {
+    // Llena el carrito con productos del inventario; devuelve false si se canceló con el carrito vacío
+    private boolean llenarCarrito(Cliente cliente) {
         while (true) {
-            String mensaje = actual == null ? "Nombre: " : "Nombre [" + actual + "]: ";
-            String nombre = leerTexto(mensaje, actual);
-            if (nombre.equals(actual) || !productos.contiene(nombre)) {
-                return nombre;
+            if (!tienda.hayProductosDisponibles()) {
+                System.out.println("\nYa no quedan productos disponibles en el inventario.");
+                return !cliente.carritoVacio();
             }
-            System.out.println("Ya existe un producto con ese nombre. Ingrese otro.");
+
+            System.out.println("\nProductos disponibles:");
+            tienda.mostrarInventario();
+
+            String nombreProducto = leerLinea("\nNombre del producto a comprar (Enter para terminar): ");
+            if (nombreProducto.isEmpty()) {
+                if (!cliente.carritoVacio()) {
+                    return true;
+                }
+                if (confirmar("El carrito está vacío. ¿Cancelar el ingreso del cliente? (s/n): ")) {
+                    return false;
+                }
+                continue;
+            }
+
+            int cantidad = leerCantidad("Cantidad: ");
+            int resultado = tienda.agregarAlCarrito(cliente, nombreProducto, cantidad);
+            switch (resultado) {
+                case Tienda.COMPRA_OK:
+                    System.out.println("Producto agregado al carrito.");
+                    break;
+                case Tienda.PRODUCTO_NO_EXISTE:
+                    System.out.println("Ese producto no existe en el inventario (revise mayúsculas y minúsculas).");
+                    break;
+                case Tienda.STOCK_INSUFICIENTE:
+                    System.out.println("No hay stock suficiente de ese producto.");
+                    break;
+                default:
+                    System.out.println("La cantidad indicada no es válida.");
+            }
         }
     }
 
-    private String leerTexto(String mensaje, String actual) {
+    // Opción 3: atiende al cliente de mayor prioridad e imprime su factura
+    private void atenderSiguiente() {
+        System.out.println("\n--- Atender al siguiente cliente ---");
+        tienda.atenderSiguiente();
+    }
+
+    private int leerPrioridad() {
+        while (true) {
+            String texto = leerLinea("Prioridad (1 = básico, 2 = afiliado, 3 = premium): ");
+            try {
+                int prioridad = Integer.parseInt(texto);
+                if (Cliente.esPrioridadValida(prioridad)) {
+                    return prioridad;
+                }
+            } catch (NumberFormatException e) {
+                // Se vuelve a solicitar la prioridad.
+            }
+            System.out.println("Ingrese 1, 2 o 3.");
+        }
+    }
+
+    private String leerTexto(String mensaje) {
         while (true) {
             String texto = leerLinea(mensaje);
             if (!texto.isEmpty()) {
                 return texto;
             }
-            if (actual != null) {
-                return actual;
-            }
             System.out.println("Este campo no puede quedar vacío.");
         }
     }
 
-    private double leerPrecio(Double actual) {
+    private double leerPrecio() {
         while (true) {
-            String mensaje = actual == null ? "Precio en colones: " : "Precio [" + actual + "]: ";
-            String texto = leerLinea(mensaje);
-            if (texto.isEmpty() && actual != null) {
-                return actual;
-            }
+            String texto = leerLinea("Precio en colones: ");
             // Se acepta punto o coma decimal, sin separadores de miles.
             if (texto.matches("[+]?(?:\\d+(?:[.,]\\d*)?|[.,]\\d+)")) {
                 try {
                     double precio = Double.parseDouble(texto.replace(',', '.'));
-                    if (Double.isFinite(precio) && precio >= 0) {
+                    if (Double.isFinite(precio) && precio > 0) {
                         return precio;
                     }
                 } catch (NumberFormatException e) {
                     // Se vuelve a solicitar el precio si el número no se puede convertir.
                 }
             }
-            System.out.println("Ingrese un precio válido mayor o igual a 0, sin separadores de miles.");
+            System.out.println("Ingrese un precio válido mayor que 0, sin separadores de miles.");
         }
     }
 
-    private int leerCantidad(Integer actual) {
+    private int leerCantidad(String mensaje) {
         while (true) {
-            String mensaje = actual == null ? "Cantidad: " : "Cantidad [" + actual + "]: ";
             String texto = leerLinea(mensaje);
-            if (texto.isEmpty() && actual != null) {
-                return actual;
-            }
             try {
                 int cantidad = Integer.parseInt(texto);
-                if (cantidad >= 0) {
+                if (cantidad > 0) {
                     return cantidad;
                 }
             } catch (NumberFormatException e) {
                 // La cantidad debe ser un entero dentro del rango de int.
             }
-            System.out.println("Ingrese una cantidad entera mayor o igual a 0 (máximo 2147483647).");
+            System.out.println("Ingrese una cantidad entera mayor que 0.");
         }
     }
 
-    private LocalDate leerFecha(LocalDate actual, boolean modificando) {
+    private LocalDate leerFecha() {
         while (true) {
-            String mensaje;
-            if (modificando) {
-                String valor = actual == null ? "No aplica" : actual.toString();
-                mensaje = "Vencimiento [" + valor + "] (AAAA-MM-DD; '-' para quitar): ";
-            } else {
-                mensaje = "Vencimiento (AAAA-MM-DD; Enter si no vence): ";
-            }
-            String texto = leerLinea(mensaje);
+            String texto = leerLinea("Vencimiento (AAAA-MM-DD; Enter si no vence): ");
             if (texto.isEmpty()) {
-                return actual;
-            }
-            if (modificando && texto.equals("-")) {
                 return null;
             }
             if (texto.matches("\\d{4}-\\d{2}-\\d{2}")) {
@@ -287,7 +267,7 @@ public class Main {
 
     private boolean costoValido(double precio, int cantidad) {
         if (!Double.isFinite(precio * cantidad)) {
-            System.out.println("El costo supera el rango permitido. No se guardaron los cambios.");
+            System.out.println("El costo supera el rango permitido. No se guardó el producto.");
             return false;
         }
         return true;

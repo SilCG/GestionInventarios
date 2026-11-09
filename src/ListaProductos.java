@@ -1,4 +1,6 @@
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ListaProductos {
 
@@ -144,6 +146,28 @@ public class ListaProductos {
             temp = temp.getSiguiente(); // avanzo un paso
         }
         System.out.println("\nCosto total de la lista: ₡" + totalAcumulado + "\n");
+    }
+
+    // 8. Obtener los productos de la lista en orden (se usa para imprimir la factura del carrito)
+    public List<Producto> obtenerProductos(){
+        List<Producto> productos = new ArrayList<>();
+        NodoProducto temp = primero;
+        while (temp != null){ // recorrer la lista
+            productos.add(temp.getProducto());
+            temp = temp.getSiguiente();
+        }
+        return productos;
+    }
+
+    // 9. Costo total acumulado de la lista (suma de precio x cantidad de cada producto)
+    public double calcularCostoTotal(){
+        double total = 0;
+        NodoProducto temp = primero;
+        while (temp != null){
+            total += temp.getProducto().calcularCostoTotal();
+            temp = temp.getSiguiente();
+        }
+        return total;
     }
 
     private class NodoProducto {
